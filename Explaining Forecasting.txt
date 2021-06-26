@@ -1,0 +1,7 @@
+Forecasting comes with assumptions, the main one being that the data generating process is (as near as makes no significant difference) the same as the one that generated the sample (except for the rhs variables, whose changes you explicitly account for in the model). If a structural change occurs (i.e. Thanksgiving in Taleb's example), all bets are off.
+Extrapolation of a fitted regression equation beyong the range of the given data can lead to seriously biased estimates if the assumed relationship does not hold in the region of extrapolation.
+
+
+We make ... crucial assumptions to enable extrapolation:
+
+In such a scenario, we can predict that ...
