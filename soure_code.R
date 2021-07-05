@@ -10,7 +10,7 @@ get_df = function()
   df=rename(df, "cumulative_vaccine_doses_administered_johnsonandjohnson"="cumulative_vaccine_doses_administered_janssen")
   US_population_in_millions = 332466570 / 1000000
   
-  df["new_confirmed_percentage"] = df["new_confirmed"] / US_population_in_millions
+  df["daily_new_confirmed_percentage"] = df["new_confirmed"] / US_population_in_millions
   df["cumulative_vaccine_doses_administered_pfizer_percentage"] = df["cumulative_vaccine_doses_administered_pfizer"] / US_population_in_millions
   df["cumulative_vaccine_doses_administered_moderna_percentage"] = df["cumulative_vaccine_doses_administered_moderna"] / US_population_in_millions
   df["cumulative_vaccine_doses_administered_johnsonandjohnson_percentage"] = df["cumulative_vaccine_doses_administered_johnsonandjohnson"] / US_population_in_millions
