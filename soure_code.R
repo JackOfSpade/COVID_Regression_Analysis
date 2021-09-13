@@ -2,6 +2,9 @@ library(tidyverse)
 library(interactions)
 library(rgl)
 library(sjPlot)
+library(lmtest)
+library(orcutt)
+library(dplyr)
 
 get_df = function()
 {
@@ -11,12 +14,14 @@ get_df = function()
   df=rename(df, "X_2"="cumulative_vaccine_doses_administered_moderna")
   df=rename(df, "X_3"="cumulative_vaccine_doses_administered_janssen")
   US_population = 333253254
-  #df["X_1"] = df["X_1"] / 1000000
-  #df["X_2"] = df["X_2"] / 1000000
-  #df["X_3"] = df["X_3"] / 1000000
+  
   df["Y"] = df["new_confirmed"] / US_population
+  
+  df["Y_star"] = NA
+  
+  # Sort by Date
   df=df[with(df, order(date)),]
- 
+  
   return(df)
 }
 
@@ -91,73 +96,65 @@ MS_Res = function(model, n, k)
   return(SS_Res(model) / (n - k))
 }
 
-residual_plot = function(model, x_value, x_axis_label)
+residual_plot = function(model, x_axis, x_axis_label)
 {
   res = residuals(model)
-  plot(x_value, res, xlab=x_axis_label, ylab="Residual",)
+  plot(x_axis, res, xlab=x_axis_label, ylab="Residual",)
   abline(0,0)
 }
+
+durbin_watson_test = function(df, model, alternative)
+{
+  if (alternative == "positive_autocorrelation")
+  {
+    alternative_arguement = c("greater")
+  }
+  else if(alternative == "negative_autocorrelation")
+  {
+    alternative_arguement = c("less")
+  }
+  else if(alternative == "any_autocorrelation")
+  {
+    alternative_arguement = c("two.sided")
+  }
+  else
+  {
+    stop('Invalid "alternative" parameter input')
+  }
+  
+  return(dwtest(model, alternative = alternative_arguement, data = df))
+}
+
+
+Cochrane_Orcutt = function(df, pre_cochrane_orcutt_model)
+{
+  rho = cochrane.orcutt(pre_cochrane_orcutt_model)$rho
+  df = mutate(df, Y_star = Y - rho*lag(Y, default = (sqrt(1-rho^2)*first(Y)) / -rho - first(Y)))
+  df = mutate(df, X_1_star = X_1 - rho*lag(X_1, default = (sqrt(1-rho^2)*first(X_1)) / -rho - first(X_1)))
+  df = mutate(df, X_2_star = X_2 - rho*lag(X_2, default = (sqrt(1-rho^2)*first(X_2)) / -rho - first(X_2)))
+  df = mutate(df, X_3_star = X_3 - rho*lag(X_3, default = (sqrt(1-rho^2)*first(X_3)) / -rho - first(X_3)))
+  
+  return(df)
+}
+
 
 df = get_df()
 n = nrow(df)
 
 explanatory_variables = c("X_1", "X_2", "X_3")
 
-
-formula1 <- as.formula(
-  paste("Y",
-        paste(c(explanatory_variables), collapse = " + "),
-        sep = " ~ "))
-
-formula2 <- as.formula(
-  paste("Y",
-        paste(c(explanatory_variables, paste(explanatory_variables[1], " * ", explanatory_variables[3])), collapse = " + "),
-        sep = " ~ "))
-
-formula3 <- as.formula(
-  paste("Y",
-        paste(c(explanatory_variables, paste(explanatory_variables[2], " * ", explanatory_variables[3])), collapse = " + "),
-        sep = " ~ "))
-
-formula4 <- as.formula(
-  paste("Y",
-        paste(c(explanatory_variables, paste(explanatory_variables[1], " * ", explanatory_variables[3]), paste(explanatory_variables[2], " * ", explanatory_variables[3])), collapse = " + "),
-        sep = " ~ "))
-
 formula5 <- as.formula(
   paste("log(Y)",
-        paste(c(explanatory_variables, paste(explanatory_variables[1], " * ", explanatory_variables[3])), collapse = " + "),
+        paste(c(explanatory_variables, paste(explanatory_variables[1], " : ", explanatory_variables[3])), collapse = " + "),
         sep = " ~ "))
 
-
-model1 = get_model(formula=formula1, df=df)
-model2 = get_model(formula=formula2, df=df)
-model3 = get_model(formula=formula3, df=df)
-model4 = get_model(formula=formula4, df=df)
 model5 = get_model(formula=formula5, df=df)
 
+df = Cochrane_Orcutt(df=df, pre_cochrane_orcutt_model=model5)
 
-print(summary_wrapper(model1))
-print(summary_wrapper(model2))
-print(summary_wrapper(model3))
-print(summary_wrapper(model4))
 
-#plot_interaction_term(df=df, explanatory_variables=explanatory_variables)
+model6 = get_model(formula="log(Y_star)~X_1_star + X_2_star + X_3_star + X_1_star:X_3_star", df=df)
 
-# residual_plot(model=model5, x_value=fitted(model5), x_axis_label="Y_hat")
-# residual_plot(model=model5, x_value=seq(from = 1, to = n, by = 1), x_axis_label="Observation Order")
+model7 = get_model(formula="log(Y_star)~X_2_star + X_3_star + X_1_star:X_3_star", df=df)
 
-acf(fitted(model5))
-
-#print(paste("SS_Res(R): ", SS_Res(model2)))
-#print(paste("SS_Res(C): ", SS_Res(model4)))
-#print(paste("SS_Res(R) - SS_Res(C): ", SS_Res(model2) - SS_Res(model4)))
-#print(paste((SS_Res(model2) - SS_Res(model4)) / SS_Res(model2)))
-
-#print(summary_wrapper(model2))
-#print(summary_wrapper(model5))
-
-#residual_plot(model=model1, x_value=df$X_1X_3_in_millions, x_axis_label="X_1*X_2 (millions)")
-#residual_plot(model=model2, x_value=fitted(model2), x_axis_label="Y_hat")
-
-#residual_plot(model=model5, x_value=fitted(model5), x_axis_label="Y_hat")
+plot(model7)
