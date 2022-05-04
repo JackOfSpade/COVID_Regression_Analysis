@@ -3,4 +3,4 @@ FROM `bigquery-public-data.covid19_open_data.covid19_open_data`
 where new_confirmed >= 0
 AND cumulative_vaccine_doses_administered_pfizer >= 1550000
 AND cumulative_vaccine_doses_administered_moderna >= 1550000
-AND cumulative_vaccine_doses_administered_janssen >= 1550000;
+AND cumulative_vaccine_doses_administered_janssen >= 1550000;;
